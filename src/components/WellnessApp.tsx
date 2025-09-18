@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { LoginForm } from "./LoginForm";
 import { OnboardingStepper } from "./OnboardingStepper";
-import { WellnessDashboard } from "./WellnessDashboard";
+import { EnhancedWellnessDashboard } from "./EnhancedWellnessDashboard";
 
 type AppState = "login" | "onboarding" | "dashboard";
 
@@ -59,7 +59,7 @@ export const WellnessApp = () => {
       )}
       
       {appState === "dashboard" && (
-        <WellnessDashboard 
+        <EnhancedWellnessDashboard 
           userData={userData}
           onLogout={handleLogout}
         />

@@ -6,58 +6,59 @@
 
 @layer base {
   :root {
-    /* Core wellness blue palette */
-    --wellness-blue: 214 100% 58%;
-    --wellness-blue-light: 214 100% 70%;
-    --wellness-blue-dark: 214 100% 45%;
+    /* Light Blue Wellness Palette - Softer, more calming */
+    --wellness-blue: 200 85% 75%;
+    --wellness-blue-light: 200 90% 85%;
+    --wellness-blue-dark: 200 75% 65%;
+    --wellness-blue-accent: 200 60% 85%;
     
-    /* Clean backgrounds */
+    /* Clean, bright backgrounds */
     --background: 0 0% 100%;
-    --foreground: 225 15% 20%;
-    --surface: 0 0% 98%;
+    --foreground: 220 15% 25%;
+    --surface: 200 20% 98%;
     
-    /* Card and component backgrounds */
-    --card: 0 0% 100%;
-    --card-foreground: 225 15% 20%;
+    /* Card and component backgrounds with subtle blue tint */
+    --card: 200 30% 99%;
+    --card-foreground: 220 15% 25%;
     
-    /* Primary wellness theme */
-    --primary: 214 100% 58%;
-    --primary-foreground: 0 0% 100%;
-    --primary-hover: 214 100% 50%;
+    /* Primary light blue theme */
+    --primary: 200 85% 75%;
+    --primary-foreground: 220 30% 15%;
+    --primary-hover: 200 80% 70%;
     
-    /* Secondary grays */
-    --secondary: 0 0% 96%;
-    --secondary-foreground: 225 15% 35%;
+    /* Light blue-gray secondary colors */
+    --secondary: 200 15% 96%;
+    --secondary-foreground: 220 15% 40%;
     
-    /* Muted elements */
-    --muted: 0 0% 94%;
-    --muted-foreground: 225 10% 50%;
+    /* Soft muted elements */
+    --muted: 200 20% 95%;
+    --muted-foreground: 220 10% 55%;
     
-    /* Accent colors */
-    --accent: 214 100% 95%;
-    --accent-foreground: 214 100% 35%;
+    /* Light blue accent colors */
+    --accent: 200 50% 95%;
+    --accent-foreground: 200 60% 25%;
     
-    /* Form elements */
-    --input: 0 0% 96%;
-    --input-border: 225 15% 85%;
-    --input-focus: 214 100% 58%;
+    /* Form elements with light blue tint */
+    --input: 200 25% 97%;
+    --input-border: 200 20% 88%;
+    --input-focus: 200 85% 75%;
     
-    /* Borders and separators */
-    --border: 225 15% 90%;
-    --ring: 214 100% 58%;
+    /* Subtle borders */
+    --border: 200 20% 92%;
+    --ring: 200 85% 75%;
     
-    /* Success and wellness greens */
-    --success: 142 76% 45%;
+    /* Wellness colors - keep success green */
+    --success: 142 65% 55%;
     --success-foreground: 0 0% 100%;
     
-    /* Warning and alert */
-    --warning: 38 92% 50%;
-    --destructive: 0 84% 60%;
+    /* Soft warning colors */
+    --warning: 38 80% 65%;
+    --destructive: 0 75% 70%;
     --destructive-foreground: 0 0% 100%;
     
-    /* Popover */
-    --popover: 0 0% 100%;
-    --popover-foreground: 225 15% 20%;
+    /* Popover with light blue tint */
+    --popover: 200 30% 99%;
+    --popover-foreground: 220 15% 25%;
 
     --radius: 0.75rem;
 
@@ -129,13 +130,17 @@
 }
 
 @layer components {
-  /* Wellness app specific components */
+  /* Wellness app specific components with improved responsiveness */
   .wellness-gradient {
     background: linear-gradient(135deg, hsl(var(--wellness-blue)) 0%, hsl(var(--wellness-blue-light)) 100%);
   }
   
   .wellness-card {
-    @apply bg-card border border-border rounded-2xl shadow-sm;
+    @apply bg-card border border-border rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 backdrop-blur-sm;
+  }
+  
+  .wellness-card-interactive {
+    @apply wellness-card hover:shadow-lg hover:scale-[1.02] cursor-pointer;
   }
   
   .wellness-input {
@@ -143,7 +148,7 @@
   }
   
   .wellness-button {
-    @apply px-6 py-3 rounded-xl font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
+    @apply px-6 py-3 rounded-xl font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 active:scale-95;
   }
   
   .wellness-button-primary {
@@ -152,5 +157,43 @@
   
   .wellness-button-secondary {
     @apply wellness-button bg-secondary text-secondary-foreground hover:bg-secondary/80 focus:ring-secondary border border-border;
+  }
+  
+  /* Responsive grid utilities */
+  .wellness-grid-responsive {
+    @apply grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4;
+  }
+  
+  .wellness-stats-grid {
+    @apply grid gap-4 grid-cols-2 lg:grid-cols-4;
+  }
+  
+  /* Widget containers with responsive padding */
+  .wellness-widget {
+    @apply wellness-card p-4 sm:p-6;
+  }
+  
+  /* Progress bars with smooth animations */
+  .wellness-progress {
+    @apply w-full bg-secondary rounded-full h-2 overflow-hidden;
+  }
+  
+  .wellness-progress-bar {
+    @apply h-full bg-primary rounded-full transition-all duration-700 ease-out;
+  }
+  
+  /* Mobile-optimized touch targets */
+  .wellness-touch-target {
+    @apply min-h-[44px] min-w-[44px] flex items-center justify-center;
+  }
+  
+  /* Accessibility improvements */
+  .wellness-focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background;
+  }
+  
+  /* Smooth transitions for interactions */
+  .wellness-transition {
+    @apply transition-all duration-200 ease-in-out;
   }
 }
