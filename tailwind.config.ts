@@ -14,6 +14,23 @@ export default {
     },
     extend: {
       colors: {
+        // Wellness-specific colors
+        "wellness-blue": "hsl(var(--wellness-blue))",
+        "wellness-blue-light": "hsl(var(--wellness-blue-light))",
+        "wellness-blue-dark": "hsl(var(--wellness-blue-dark))",
+        surface: "hsl(var(--surface))",
+        
+        // Form elements
+        "input-border": "hsl(var(--input-border))",
+        "input-focus": "hsl(var(--input-focus))",
+        "primary-hover": "hsl(var(--primary-hover))",
+        
+        // Status colors
+        success: "hsl(var(--success))",
+        "success-foreground": "hsl(var(--success-foreground))",
+        warning: "hsl(var(--warning))",
+        
+        // Core shadcn colors
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
