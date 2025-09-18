@@ -1,5 +1,26 @@
-import React, { useState } from 'react';
-import { Heart, Eye, EyeOff, Mail, Lock, Chrome, Smartphone, ArrowRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Heart, Eye, EyeOff, Mail, Lock, ChevronLeft, ChevronRight, Chrome, Smartphone, ArrowRight } from 'lucide-react';
+import '@/styles/enhanced-login.css';
+
+// Health and wellness images for the carousel
+const carouselImages = [
+  {
+    url: '/wellness-1.jpg',
+    title: 'Smart Fitness Tracking',
+    quote: 'Transform your wellness journey with AI-powered insights'
+  },
+  {
+    url: '/wellness-2.jpg',
+    title: 'Personalized Nutrition',
+    quote: 'Your path to optimal health, guided by intelligence'
+  },
+  {
+    url: '/wellness-3.jpg',
+    title: 'Mindful Meditation',
+    quote: 'Balance mind and body with data-driven wellness'
+  }
+];
 
 interface EnhancedLoginFormProps {
   onLogin: (email: string, password: string) => void;
@@ -7,7 +28,7 @@ interface EnhancedLoginFormProps {
   onSocialLogin: (provider: 'google' | 'apple') => void;
 }
 
-export const EnhancedLoginForm = ({ onLogin, onSignUp, onSocialLogin }: EnhancedLoginFormProps) => {
+export default function EnhancedLoginForm({ onLogin, onSignUp, onSocialLogin }: EnhancedLoginFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);

@@ -1,12 +1,8 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Heart, Eye, EyeOff, Mail, Lock, Loader2, AlertCircle } from "lucide-react";
-import { Alert, AlertDescription } from "./ui/alert";
-import logoImage from "/placeholder.svg";
-
 import {
   Form,
   FormControl,
@@ -24,56 +20,64 @@ import {
   CardHeader,
   CardTitle,
 } from "./ui/card";
+import { Alert, AlertDescription } from "./ui/alert";
 
-const loginSchema = z.object({
+const signupSchema = z.object({
   email: z.string().email('Please enter a valid email'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  password: z.string()
+    .min(8, 'Password must be at least 8 characters')
+    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+    .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+    .regex(/[0-9]/, 'Password must contain at least one number')
+    .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character'),
+  confirmPassword: z.string()
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
 });
 
-type LoginFormData = z.infer<typeof loginSchema>;
+type SignupFormData = z.infer<typeof signupSchema>;
 
-interface LoginFormProps {
-  onLogin: (email: string, password: string) => Promise<void>;
-  onSignUp: () => void;
-  onGoogleLogin: () => Promise<void>;
-  onForgotPassword: () => void;
+interface SignupFormProps {
+  onSignup: (email: string, password: string) => Promise<void>;
+  onGoogleSignup: () => Promise<void>;
+  onLogin: () => void;
 }
 
-export const LoginForm = ({ onLogin, onSignUp }: LoginFormProps) => {
+export const SignupForm = ({ onSignup, onGoogleSignup, onLogin }: SignupFormProps) => {
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const form = useForm<LoginFormData>({
-    resolver: zodResolver(loginSchema),
+  const form = useForm<SignupFormData>({
+    resolver: zodResolver(signupSchema),
     defaultValues: {
       email: '',
       password: '',
+      confirmPassword: '',
     },
   });
 
-  const [error, setError] = useState<string | null>(null);
-
-  const onSubmit = async (data: LoginFormData) => {
+  const onSubmit = async (data: SignupFormData) => {
     setIsLoading(true);
     setError(null);
     try {
-      await onLogin(data.email, data.password);
+      await onSignup(data.email, data.password);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to sign in');
-      console.error(err);
+      setError(err instanceof Error ? err.message : 'Failed to create account');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleGoogleLogin = async () => {
+  const handleGoogleSignup = async () => {
     setIsLoading(true);
     setError(null);
     try {
-      await onGoogleLogin();
+      await onGoogleSignup();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to sign in with Google');
-      console.error(err);
+      setError(err instanceof Error ? err.message : 'Failed to sign up with Google');
     } finally {
       setIsLoading(false);
     }
@@ -83,25 +87,28 @@ export const LoginForm = ({ onLogin, onSignUp }: LoginFormProps) => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-50 to-blue-50 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <motion.div
-            initial={{ scale: 0.95 }}
-            animate={{ scale: 1 }}
-            className="w-full flex justify-center mb-4"
-          >
+          <div className="w-full flex justify-center mb-4">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-wellness-blue rounded-2xl relative overflow-hidden">
               <div className="absolute inset-0 bg-neural-pattern opacity-20" />
               <Heart className="w-8 h-8 text-white fill-current relative z-10" />
             </div>
-          </motion.div>
+          </div>
           <CardTitle className="text-2xl font-bold text-center text-gray-800">
-            Welcome to Vita Navigator
+            Create Your Account
           </CardTitle>
           <CardDescription className="text-center text-gray-600">
-            Your personal wellness companion
+            Start your wellness journey today
           </CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-6">
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
@@ -137,7 +144,7 @@ export const LoginForm = ({ onLogin, onSignUp }: LoginFormProps) => {
                       <div className="relative">
                         <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                         <Input
-                          placeholder="Enter your password"
+                          placeholder="Create a strong password"
                           type={showPassword ? "text" : "password"}
                           className="h-11 pl-10 pr-12 rounded-lg bg-white/50 backdrop-blur-sm border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-200 transition-all"
                           disabled={isLoading}
@@ -161,21 +168,49 @@ export const LoginForm = ({ onLogin, onSignUp }: LoginFormProps) => {
                 )}
               />
 
-              <motion.div
-                whileHover={{ scale: 1.01 }}
-                whileTap={{ scale: 0.99 }}
+              <FormField
+                control={form.control}
+                name="confirmPassword"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Confirm Password</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                        <Input
+                          placeholder="Confirm your password"
+                          type={showConfirmPassword ? "text" : "password"}
+                          className="h-11 pl-10 pr-12 rounded-lg bg-white/50 backdrop-blur-sm border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-200 transition-all"
+                          disabled={isLoading}
+                          {...field}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                        >
+                          {showConfirmPassword ? (
+                            <EyeOff className="w-5 h-5" />
+                          ) : (
+                            <Eye className="w-5 h-5" />
+                          )}
+                        </button>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <Button
+                type="submit"
+                className="w-full h-11 bg-gradient-to-r from-teal-500 to-blue-500 text-white rounded-lg font-medium shadow-md hover:shadow-lg transition-all duration-300"
+                disabled={isLoading}
               >
-                <Button
-                  type="submit"
-                  className="w-full h-11 bg-gradient-to-r from-teal-500 to-blue-500 text-white rounded-lg font-medium shadow-md hover:shadow-lg transition-all duration-300"
-                  disabled={isLoading}
-                >
-                  {isLoading && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  )}
-                  Sign In
-                </Button>
-              </motion.div>
+                {isLoading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : "Create Account"}
+              </Button>
             </form>
           </Form>
 
@@ -190,56 +225,36 @@ export const LoginForm = ({ onLogin, onSignUp }: LoginFormProps) => {
             </div>
           </div>
 
-          <motion.div
-            whileHover={{ scale: 1.01 }}
-            whileTap={{ scale: 0.99 }}
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full h-11 rounded-lg font-medium border border-gray-200 hover:bg-gray-50 transition-all duration-300 flex items-center justify-center gap-2"
+            onClick={handleGoogleSignup}
+            disabled={isLoading}
           >
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full h-11 rounded-lg font-medium border border-gray-200 hover:bg-gray-50 transition-all duration-300 flex items-center justify-center gap-2"
-              onClick={handleGoogleLogin}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <img
-                  src="/google.svg"
-                  alt="Google"
-                  className="w-5 h-5"
-                />
-              )}
-              Continue with Google
-            </Button>
-          </motion.div>
+            {isLoading ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <img
+                src="/google.svg"
+                alt="Google"
+                className="w-5 h-5"
+              />
+            )}
+            Continue with Google
+          </Button>
 
-          <div className="text-center space-y-2">
-            <button
-              onClick={onForgotPassword}
-              type="button"
-              className="text-sm text-teal-600 hover:text-teal-700 transition-colors"
-            >
-              Forgot your password?
-            </button>
+          <div className="text-center">
             <p className="text-sm text-gray-600">
-              Don't have an account?{" "}
+              Already have an account?{" "}
               <button
-                type="button"
-                onClick={onSignUp}
+                onClick={onLogin}
                 className="font-medium text-teal-600 hover:text-teal-700 transition-colors"
               >
-                Sign up
+                Sign in
               </button>
             </p>
           </div>
-
-          {error && (
-            <Alert variant="destructive" className="mt-4">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
         </CardContent>
       </Card>
     </div>

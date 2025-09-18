@@ -6,15 +6,18 @@ import {
   Check, X, Eye, EyeOff, Sliders, RotateCcw, Plus, Minus,
   Award, Star, Timer, MoreVertical
 } from 'lucide-react';
+import { useStepCounter, useScreenTime, ActivityDataProcessor } from '../lib/activityTracking';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { ProgressVisualization } from './ProgressVisualization';
 
 interface EnhancedWellnessDashboardProps {
   userData: {
+    email: string;
     name?: string;
-    age?: number;
-    gender?: 'male' | 'female';
-    weight?: number;
-    height?: number;
+    age?: number | null;
+    gender?: 'male' | 'female' | null;
+    weight?: number | null;
+    height?: number | null;
     goals?: string[];
     preferences?: {
       activityType: string;
@@ -57,15 +60,26 @@ interface WeeklyData {
 }
 
 export const EnhancedWellnessDashboard = ({ userData, onLogout }: EnhancedWellnessDashboardProps) => {
+  // Activity tracking hooks
+  const { stepData, isTracking, startTracking, stopTracking } = useStepCounter();
+  const { screenTimeData } = useScreenTime();
+
+  // Start tracking when component mounts
+  useEffect(() => {
+    startTracking();
+    return () => stopTracking();
+  }, [startTracking, stopTracking]);
+
   // State management for interactivity
   const [activeTab, setActiveTab] = useState('home');
   const [tasks, setTasks] = useState<Task[]>([]);
   const [widgets, setWidgets] = useState<Widget[]>([
     { id: 'stats', title: 'Daily Stats', visible: true, order: 1, collapsible: false, collapsed: false },
     { id: 'tasks', title: 'Today\'s Tasks', visible: true, order: 2, collapsible: true, collapsed: false },
-    { id: 'progress', title: 'Weekly Progress', visible: true, order: 3, collapsible: true, collapsed: false },
-    { id: 'quick-access', title: 'Quick Access', visible: true, order: 4, collapsible: true, collapsed: false },
-    { id: 'health-metrics', title: 'Health Metrics', visible: true, order: 5, collapsible: true, collapsed: false },
+    { id: 'activity', title: 'Activity Tracking', visible: true, order: 3, collapsible: true, collapsed: false },
+    { id: 'progress', title: 'Weekly Progress', visible: true, order: 4, collapsible: true, collapsed: false },
+    { id: 'quick-access', title: 'Quick Access', visible: true, order: 5, collapsible: true, collapsed: false },
+    { id: 'health-metrics', title: 'Health Metrics', visible: true, order: 6, collapsible: true, collapsed: false },
   ]);
   const [customizationMode, setCustomizationMode] = useState(false);
   const [dailyStreak, setDailyStreak] = useState(7);
@@ -75,10 +89,9 @@ export const EnhancedWellnessDashboard = ({ userData, onLogout }: EnhancedWellne
 
   // Personalized content generation based on user data
   const personalizedContent = useMemo(() => {
-    const age = userData.age || 25;
-    const gender = userData.gender || 'male';
-    const goals = userData.goals || [];
-    
+    const age = userData.age ?? 25; // Use nullish coalescing to handle null/undefined
+    const gender = userData.gender ?? 'male';
+    const goals = userData.goals ?? [];
     let personalizedTasks: Task[] = [];
     
     // Age-based personalization
@@ -241,7 +254,7 @@ export const EnhancedWellnessDashboard = ({ userData, onLogout }: EnhancedWellne
         <div className="flex items-center justify-between mb-4 sm:mb-6">
           <div className="flex-1">
             <h1 className="text-lg sm:text-xl lg:text-2xl font-bold">
-              {getGreeting()}{userData.name ? `, ${userData.name}` : ''}
+              {getGreeting()}{userData.name ? `, ${userData.name}` : `, ${userData.email.split('@')[0]}`}
             </h1>
             <p className="text-blue-100 text-sm sm:text-base mt-1">
               Ready to achieve your wellness goals?
@@ -521,6 +534,35 @@ export const EnhancedWellnessDashboard = ({ userData, onLogout }: EnhancedWellne
                         <div className="text-sm text-muted-foreground">Calories Burned</div>
                       </div>
                     </div>
+                  </div>
+                )}
+
+                {/* Activity Tracking */}
+                {widget.id === 'activity' && (
+                  <div className="wellness-card">
+                    <ProgressVisualization
+                      progressData={ActivityDataProcessor.getProgressData(stepData, screenTimeData)}
+                      recommendationAnalytics={[
+                        {
+                          taskId: '1',
+                          taskName: 'Morning Walk',
+                          overallScore: 0.85,
+                          factorBreakdown: [
+                            { factor: 'Time of Day', score: 0.9, weight: 0.3, impact: 'positive' },
+                            { factor: 'Duration', score: 0.8, weight: 0.3, impact: 'positive' },
+                            { factor: 'Intensity', score: 0.85, weight: 0.4, impact: 'positive' }
+                          ],
+                          confidenceScore: 90,
+                          alternativeRecommendations: ['Evening Walk', 'Light Jogging']
+                        }
+                      ]}
+                      userMetrics={{
+                        consistency: 0.85,
+                        improvement: 0.75,
+                        adherence: 0.9,
+                        challengeLevel: 'intermediate'
+                      }}
+                    />
                   </div>
                 )}
 

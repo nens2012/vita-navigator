@@ -1,38 +1,55 @@
-import { useState } from "react";
-import { ChevronLeft, ChevronRight, User, Target, Calendar, Heart } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ChevronLeft, ChevronRight, User, Target, Calendar, Heart, AlertCircle } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { 
+  onboardingSchema, 
+  calculateBMI, 
+  getBMICategory,
+  getAgeBasedRecommendations,
+  getGenderSpecificWorkouts,
+  type OnboardingData 
+} from "../lib/onboarding";
+import { Gender, type MedicalCondition } from "../lib/types";
 
 interface OnboardingStepperProps {
-  onComplete: (data: any) => void;
-  initialData: any;
-}
-
-interface StepData {
-  name: string;
-  age: number;
-  gender: "male" | "female";
-  weight: number;
-  height: number;
-  medicalHistory: string;
-  goals: string[];
-  activityPreference: string;
-  timePerDay: number;
-  dietPreference: string;
-  periodInfo?: {
-    cycleLength: number;
-    lastPeriod: string;
-  };
+  onComplete: (data: OnboardingData) => void;
+  initialData: Partial<OnboardingData>;
 }
 
 export const OnboardingStepper = ({ onComplete, initialData }: OnboardingStepperProps) => {
   const [currentStep, setCurrentStep] = useState(1);
-  const [formData, setFormData] = useState<Partial<StepData>>({
-    goals: [],
+  const [formData, setFormData] = useState<Partial<OnboardingData>>({
+    goals: {
+      fitnessGoals: [],
+      healthGoals: []
+    },
+    personalDetails: {
+      name: "",
+      age: 0,
+      gender: "male"
+    },
+    physicalDetails: {
+      weight: 0,
+      height: 0,
+      medicalConditions: [],
+      hasPCOD: false
+    },
+    preferences: {
+      activityPreference: "both",
+      timePerDay: 30,
+      dietPreference: "no-preference",
+      periodInfo: {
+        cycleLength: 28,
+        lastPeriod: ""
+      }
+    }
   });
 
   const totalSteps = 4;
 
-  const updateFormData = (data: Partial<StepData>) => {
-    setFormData({ ...formData, ...data });
+  const updateFormData = (data: Partial<OnboardingData>) => {
+    setFormData(prev => ({ ...prev, ...data }));
   };
 
   const nextStep = () => {
@@ -52,58 +69,52 @@ export const OnboardingStepper = ({ onComplete, initialData }: OnboardingStepper
   const isStepValid = () => {
     switch (currentStep) {
       case 1:
-        return formData.name && formData.age && formData.gender;
+        return formData.personalDetails?.name && 
+               formData.personalDetails?.age && 
+               formData.personalDetails?.gender;
       case 2:
-        return formData.weight && formData.height;
+        return formData.physicalDetails?.weight && 
+               formData.physicalDetails?.height;
       case 3:
-        return formData.goals && formData.goals.length > 0;
+        return formData.goals?.fitnessGoals?.length > 0;
       case 4:
-        return formData.activityPreference && formData.timePerDay;
+        return formData.preferences?.activityPreference && 
+               formData.preferences?.timePerDay;
       default:
         return false;
     }
   };
 
   const getBMI = () => {
-    if (formData.weight && formData.height) {
-      const heightInM = formData.height / 100;
-      return (formData.weight / (heightInM * heightInM)).toFixed(1);
+    const weight = formData.physicalDetails?.weight;
+    const height = formData.physicalDetails?.height;
+    if (weight && height) {
+      return calculateBMI(weight, height);
     }
     return null;
   };
 
-  const getMaleGoals = () => [
-    "Weight Loss", "Muscle Gain", "Stress Relief", "Endurance", "General Fitness"
-  ];
-
-  const getFemaleGoals = () => [
-    "Weight Loss", "Stress Relief", "Better Sleep", "Menstrual Health", 
-    "PCOD Care", "Post-pregnancy Recovery", "General Fitness"
-  ];
+  const getBMIMessage = () => {
+    const bmi = getBMI();
+    if (!bmi) return null;
+    const category = getBMICategory(bmi);
+    return `Your BMI is ${bmi} (${category})`;
+  };
 
   const getWorkflowMessage = () => {
-    if (!formData.gender || !formData.age) return "";
+    const age = formData.personalDetails?.age;
+    const gender = formData.personalDetails?.gender;
     
-    const ageGroup = formData.age < 20 ? "teen" : 
-                    formData.age < 40 ? "adult" : 
-                    formData.age < 60 ? "middle-age" : "senior";
-    
-    const workflows = {
-      male: {
-        teen: "Focus on fitness, posture, and stamina building",
-        adult: "Strength training, muscle gain, and weight control",
-        "middle-age": "Heart health, flexibility, and stress management",
-        senior: "Yoga, joint mobility, and breathing exercises"
-      },
-      female: {
-        teen: "Growth support, posture, and flexibility",
-        adult: "Weight management, stress relief, and hormonal balance",
-        "middle-age": "Bone strength, menopause support, and PCOD/PCOS care",
-        senior: "Yoga, joint mobility, and breathing exercises"
-      }
-    };
-    
-    return workflows[formData.gender][ageGroup];
+    if (!gender || !age) return "";
+
+    const ageRecommendations = getAgeBasedRecommendations(age);
+    const genderWorkouts = getGenderSpecificWorkouts(
+      gender as Gender,
+      formData.physicalDetails?.hasPCOD
+    );
+
+    return `Based on your profile: ${ageRecommendations.recommendations[0]}. 
+    Recommended activities include: ${genderWorkouts.workouts.join(", ")}.`;
   };
 
   return (
@@ -150,8 +161,13 @@ export const OnboardingStepper = ({ onComplete, initialData }: OnboardingStepper
               <input
                 type="text"
                 placeholder="Full Name"
-                value={formData.name || ""}
-                onChange={(e) => updateFormData({ name: e.target.value })}
+                value={formData.personalDetails?.name || ""}
+                onChange={(e) => updateFormData({ 
+                  personalDetails: {
+                    ...formData.personalDetails,
+                    name: e.target.value
+                  }
+                })}
                 className="wellness-input"
               />
               
@@ -159,23 +175,34 @@ export const OnboardingStepper = ({ onComplete, initialData }: OnboardingStepper
                 <input
                   type="number"
                   placeholder="Age"
-                  value={formData.age || ""}
-                  onChange={(e) => updateFormData({ age: parseInt(e.target.value) })}
+                  value={formData.personalDetails?.age || ""}
+                  onChange={(e) => updateFormData({ 
+                    personalDetails: {
+                      ...formData.personalDetails,
+                      age: parseInt(e.target.value)
+                    }
+                  })}
                   className="wellness-input"
                 />
                 
                 <select
-                  value={formData.gender || ""}
-                  onChange={(e) => updateFormData({ gender: e.target.value as "male" | "female" })}
+                  value={formData.personalDetails?.gender || ""}
+                  onChange={(e) => updateFormData({ 
+                    personalDetails: {
+                      ...formData.personalDetails,
+                      gender: e.target.value as Gender
+                    }
+                  })}
                   className="wellness-input"
                 >
                   <option value="">Gender</option>
                   <option value="male">Male</option>
                   <option value="female">Female</option>
+                  <option value="other">Other</option>
                 </select>
               </div>
 
-              {formData.gender && formData.age && (
+              {formData.personalDetails?.gender && formData.personalDetails?.age && (
                 <div className="bg-accent p-4 rounded-xl">
                   <p className="text-sm font-medium text-accent-foreground">
                     Your wellness path: {getWorkflowMessage()}
@@ -198,29 +225,37 @@ export const OnboardingStepper = ({ onComplete, initialData }: OnboardingStepper
             </div>
 
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <input
-                    type="number"
-                    placeholder="Weight (kg)"
-                    value={formData.weight || ""}
-                    onChange={(e) => updateFormData({ weight: parseFloat(e.target.value) })}
-                    className="wellness-input"
-                  />
-                </div>
-                
-                <div>
-                  <input
-                    type="number"
-                    placeholder="Height (cm)"
-                    value={formData.height || ""}
-                    onChange={(e) => updateFormData({ height: parseFloat(e.target.value) })}
-                    className="wellness-input"
-                  />
-                </div>
-              </div>
-
-              {getBMI() && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <input
+                      type="number"
+                      placeholder="Weight (kg)"
+                      value={formData.physicalDetails?.weight || ""}
+                      onChange={(e) => updateFormData({
+                        physicalDetails: {
+                          ...formData.physicalDetails,
+                          weight: parseFloat(e.target.value)
+                        }
+                      })}
+                      className="wellness-input"
+                    />
+                  </div>
+                  
+                  <div>
+                    <input
+                      type="number"
+                      placeholder="Height (cm)"
+                      value={formData.physicalDetails?.height || ""}
+                      onChange={(e) => updateFormData({
+                        physicalDetails: {
+                          ...formData.physicalDetails,
+                          height: parseFloat(e.target.value)
+                        }
+                      })}
+                      className="wellness-input"
+                    />
+                  </div>
+                </div>              {getBMI() && (
                 <div className="bg-accent p-4 rounded-xl">
                   <p className="text-sm font-medium text-accent-foreground">
                     Your BMI: {getBMI()}
@@ -250,21 +285,33 @@ export const OnboardingStepper = ({ onComplete, initialData }: OnboardingStepper
             </div>
 
             <div className="space-y-3">
-              {(formData.gender === "female" ? getFemaleGoals() : getMaleGoals()).map((goal) => (
+              {[
+                "Weight Loss",
+                "Muscle Gain",
+                "Stress Relief",
+                "Better Sleep",
+                "General Fitness",
+                ...(formData.personalDetails?.gender === 'female' 
+                  ? ["Menstrual Health", "PCOD Care", "Post-pregnancy Recovery"] 
+                  : [])
+              ].map((goal) => (
                 <label
                   key={goal}
                   className="flex items-center p-4 bg-card border border-border rounded-xl cursor-pointer hover:bg-accent transition-colors"
                 >
                   <input
                     type="checkbox"
-                    checked={formData.goals?.includes(goal) || false}
+                    checked={formData.goals?.fitnessGoals?.includes(goal) || false}
                     onChange={(e) => {
-                      const currentGoals = formData.goals || [];
-                      if (e.target.checked) {
-                        updateFormData({ goals: [...currentGoals, goal] });
-                      } else {
-                        updateFormData({ goals: currentGoals.filter(g => g !== goal) });
-                      }
+                      const currentGoals = formData.goals?.fitnessGoals || [];
+                      updateFormData({
+                        goals: {
+                          ...formData.goals,
+                          fitnessGoals: e.target.checked
+                            ? [...currentGoals, goal]
+                            : currentGoals.filter(g => g !== goal)
+                        }
+                      });
                     }}
                     className="mr-3 w-5 h-5 text-wellness-blue"
                   />

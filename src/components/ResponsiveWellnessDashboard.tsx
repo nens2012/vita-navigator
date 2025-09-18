@@ -5,8 +5,19 @@ import {
   Flower2, BrainCircuit, BarChart3, Clock, ChevronDown, ChevronUp,
   Check, X, Eye, EyeOff, Sliders, RotateCcw, Plus, Minus,
   Award, Star, Timer, MoreVertical, Droplets, Apple, Sun,
-  GripVertical, Palette, Move3D
+  GripVertical, Palette, Move3D, Search, LayoutDashboard, Menu
 } from 'lucide-react';
+
+import { TopNavigation } from './TopNavigation';
+import { ProfileSection } from './ProfileSection';
+import { PersonalizationService } from '../lib/personalization';
+import styles from '../styles/responsive-wellness.module.css';
+
+// Update UserProfile interface
+interface UserProfile extends ResponsiveWellnessDashboardProps {
+  medicalConditions?: string[];
+  fitnessLevel?: number;
+}
 
 // Lazy load heavy chart components for performance
 const LineChart = lazy(() => import('recharts').then(module => ({ default: module.LineChart })));
@@ -26,6 +37,8 @@ interface ResponsiveWellnessDashboardProps {
     weight?: number;
     height?: number;
     goals?: string[];
+    medicalConditions?: string[];
+    fitnessLevel?: number;
     preferences?: {
       activityType: string;
       timePerDay: number;
@@ -40,7 +53,21 @@ interface ResponsiveWellnessDashboardProps {
     };
   };
   onLogout: () => void;
+  onUpdateProfile?: (data: any) => void;
 }
+
+const getActivityColor = (type: Task['type']) => {
+  switch (type) {
+    case 'yoga':
+      return 'bg-purple-100 text-purple-500';
+    case 'exercise':
+      return 'bg-orange-100 text-orange-500';
+    case 'meditation':
+      return 'bg-blue-100 text-blue-500';
+    default:
+      return 'bg-gray-100 text-gray-500';
+  }
+};
 
 interface Task {
   id: number;
@@ -84,7 +111,12 @@ interface PeriodData {
   recommendations: string[];
 }
 
-export const ResponsiveWellnessDashboard = ({ userData, onLogout }: ResponsiveWellnessDashboardProps) => {
+{
+export const ResponsiveWellnessDashboard = React.memo<ResponsiveWellnessDashboardProps>(({ 
+  userData, 
+  onLogout,
+  onUpdateProfile
+}) => {
   // Enhanced state management with performance optimization
   const [activeTab, setActiveTab] = useState('home');
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -103,6 +135,7 @@ export const ResponsiveWellnessDashboard = ({ userData, onLogout }: ResponsiveWe
   const [totalCalories, setTotalCalories] = useState(0);
   const [activeMinutes, setActiveMinutes] = useState(0);
   const [weeklyProgress, setWeeklyProgress] = useState(0);
+  const [selectedActivity, setSelectedActivity] = useState<string | null>(null);
   const [themeShade, setThemeShade] = useState<'light' | 'medium' | 'dark'>(userData.preferences?.themeShade || 'medium');
   const [draggedWidget, setDraggedWidget] = useState<string | null>(null);
 
@@ -118,9 +151,34 @@ export const ResponsiveWellnessDashboard = ({ userData, onLogout }: ResponsiveWe
 
   // Enhanced personalization engine with gender and age intelligence
   const personalizedContent = useMemo(() => {
-    const age = userData.age || 25;
-    const gender = userData.gender || 'male';
+    const age = userData.age;
+    const gender = userData.gender;
     const goals = userData.goals || [];
+    const medicalConditions = userData.medicalConditions || [];
+    
+    // Return early with default content if age or gender not set
+    if (!age || !gender) {
+      return {
+        tasks: [
+          {
+            id: 1,
+            title: 'Complete Your Profile',
+            duration: '5 min',
+            completed: false,
+            type: 'yoga' as const,
+            difficulty: 'beginner' as const,
+            description: 'Update your age and gender for personalized recommendations',
+            ageGroup: '18-30' as const,
+            genderSpecific: 'both' as const,
+            category: 'mindfulness' as const
+          }
+        ]
+      };
+    }
+
+    // Initialize personalization service
+    const personalizationService = PersonalizationService.getInstance();
+    personalizationService.setUserDetails(age, gender);
     
     // Determine age group for precise personalization
     const ageGroup: '18-30' | '31-50' | '51+' = 
@@ -536,14 +594,424 @@ export const ResponsiveWellnessDashboard = ({ userData, onLogout }: ResponsiveWe
     return themes[shade];
   };
 
+  const getActivityColor = (type: Task['type']) => {
+    switch (type) {
+      case 'yoga':
+        return 'bg-purple-100 text-purple-500';
+      case 'exercise':
+        return 'bg-orange-100 text-orange-500';
+      case 'meditation':
+        return 'bg-blue-100 text-blue-500';
+      default:
+        return 'bg-gray-100 text-gray-500';
+    }
+  };
+
+  // Theme classes based on user preference
   const theme = getThemeClasses(themeShade);
 
+  const getActiveContent = () => {
+    switch (activeTab) {
+      case 'home':
+        return (
+          <div className="space-y-6 pt-16">
+            {/* Daily Plan Overview */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Yoga Plan */}
+              <div className="bg-white rounded-2xl shadow-sm p-6">
+                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4">
+                  <Flower2 className="w-5 h-5 text-sky-600" />
+                  Today's Yoga
+                </h3>
+                <div className="space-y-3">
+                  {tasks.filter(task => task.type === 'yoga').map(task => (
+                    <div
+                      key={task.id}
+                      className={`p-4 rounded-lg ${
+                        task.completed ? 'bg-green-50' : 'bg-gray-50'
+                      }`}
+                    >
+                      <h4 className="font-medium text-gray-900">{task.title}</h4>
+                      <p className="text-sm text-gray-600 mt-1">{task.duration}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Exercise Plan */}
+              <div className="bg-white rounded-2xl shadow-sm p-6">
+                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4">
+                  <Dumbbell className="w-5 h-5 text-sky-600" />
+                  Today's Exercise
+                </h3>
+                <div className="space-y-3">
+                  {tasks.filter(task => task.type === 'exercise').map(task => (
+                    <div
+                      key={task.id}
+                      className={`p-4 rounded-lg ${
+                        task.completed ? 'bg-green-50' : 'bg-gray-50'
+                      }`}
+                    >
+                      <h4 className="font-medium text-gray-900">{task.title}</h4>
+                      <div className="flex items-center justify-between mt-1">
+                        <span className="text-sm text-gray-600">{task.duration}</span>
+                        {task.calories && (
+                          <span className="text-sm text-gray-600">{task.calories} cal</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Meditation Plan */}
+              <div className="bg-white rounded-2xl shadow-sm p-6">
+                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4">
+                  <BrainCircuit className="w-5 h-5 text-sky-600" />
+                  Today's Meditation
+                </h3>
+                <div className="space-y-3">
+                  {tasks.filter(task => task.type === 'meditation').map(task => (
+                    <div
+                      key={task.id}
+                      className={`p-4 rounded-lg ${
+                        task.completed ? 'bg-green-50' : 'bg-gray-50'
+                      }`}
+                    >
+                      <h4 className="font-medium text-gray-900">{task.title}</h4>
+                      <p className="text-sm text-gray-600 mt-1">{task.duration}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Progress Overview */}
+            <div className="bg-white rounded-2xl shadow-sm p-6">
+              <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-6">
+                <TrendingUp className="w-5 h-5 text-sky-600" />
+                Progress Overview
+              </h3>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={weeklyData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis 
+                      dataKey="day" 
+                      stroke="#6b7280"
+                      fontSize={12}
+                    />
+                    <YAxis 
+                      stroke="#6b7280"
+                      fontSize={12}
+                    />
+                    <Tooltip />
+                    <Line 
+                      type="monotone" 
+                      dataKey="workouts" 
+                      stroke="#0ea5e9" 
+                      strokeWidth={2}
+                      dot={{ fill: '#0ea5e9', r: 4 }}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="meditation" 
+                      stroke="#10b981" 
+                      strokeWidth={2}
+                      dot={{ fill: '#10b981', r: 4 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Quick Stats */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
+              <div className="bg-white rounded-2xl shadow-sm p-6 text-center">
+                <div className="text-2xl font-bold text-sky-600">{dailyStreak}</div>
+                <div className="text-sm text-gray-600">Day Streak</div>
+              </div>
+              <div className="bg-white rounded-2xl shadow-sm p-6 text-center">
+                <div className="text-2xl font-bold text-green-600">
+                  {tasks.filter(t => t.completed).length}
+                </div>
+                <div className="text-sm text-gray-600">Tasks Done</div>
+              </div>
+              <div className="bg-white rounded-2xl shadow-sm p-6 text-center">
+                <div className="text-2xl font-bold text-purple-600">{totalCalories}</div>
+                <div className="text-sm text-gray-600">Calories</div>
+              </div>
+              <div className="bg-white rounded-2xl shadow-sm p-6 text-center">
+                <div className="text-2xl font-bold text-orange-600">{activeMinutes}</div>
+                <div className="text-sm text-gray-600">Active Min</div>
+              </div>
+            </div>
+          </div>
+        );
+      case 'activity':
+        return (
+          <div className="space-y-6">
+            <div className="wellness-grid-responsive">
+              {/* Quick Actions */}
+              <button 
+                className="wellness-card-interactive p-4 text-left"
+                onClick={() => handleActivitySelect('workout')}
+              >
+                <div className="wellness-icon-container bg-red-100">
+                  <Dumbbell className="w-6 h-6 text-red-600" />
+                </div>
+                <h3 className="text-lg font-medium mt-2">Start Workout</h3>
+              </button>
+              <button 
+                className="wellness-card-interactive p-4 text-left"
+                onClick={() => handleActivitySelect('yoga')}
+              >
+                <div className="wellness-icon-container bg-green-100">
+                  <Flower2 className="w-6 h-6 text-green-600" />
+                </div>
+                <h3 className="text-lg font-medium mt-2">Yoga Session</h3>
+              </button>
+              <button 
+                className="wellness-card-interactive p-4 text-left"
+                onClick={() => handleActivitySelect('meditation')}
+              >
+                <div className="wellness-icon-container bg-blue-100">
+                  <BrainCircuit className="w-6 h-6 text-blue-600" />
+                </div>
+                <h3 className="text-lg font-medium mt-2">Meditation</h3>
+              </button>
+            </div>
+            {/* Current Activity */}
+            {selectedActivity && (
+              <div className="wellness-card p-6">
+                <h2 className="text-xl font-bold mb-4">
+                  {selectedActivity.charAt(0).toUpperCase() + selectedActivity.slice(1)} Session
+                </h2>
+                <div className="space-y-4">
+                  {tasks.filter(task => task.type === selectedActivity).map(task => (
+                    <div key={task.id} className="p-4 bg-gray-50 rounded-lg">
+                      <h3 className="font-medium">{task.title}</h3>
+                      <p className="text-sm text-gray-600">{task.description}</p>
+                      <div className="mt-2 flex items-center gap-2">
+                        <span className="text-sm text-gray-500">{task.duration}</span>
+                        {task.calories && (
+                          <span className="text-sm text-gray-500">• {task.calories} cal</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      case 'progress':
+        return (
+          <div className="space-y-6">
+            {/* Progress Chart */}
+            <div className="wellness-card p-6">
+              <h2 className="text-xl font-bold mb-4">Weekly Progress</h2>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={weeklyData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis dataKey="day" />
+                    <YAxis />
+                    <Tooltip />
+                    <Line type="monotone" dataKey="workouts" stroke="#0ea5e9" />
+                    <Line type="monotone" dataKey="meditation" stroke="#10b981" />
+                    <Line type="monotone" dataKey="calories" stroke="#f59e0b" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+            {/* Stats Summary */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="wellness-card p-4 text-center">
+                <div className="text-2xl font-bold text-sky-600">{dailyStreak}</div>
+                <div className="text-sm text-gray-600">Day Streak</div>
+              </div>
+              <div className="wellness-card p-4 text-center">
+                <div className="text-2xl font-bold text-green-600">
+                  {tasks.filter(t => t.completed).length}
+                </div>
+                <div className="text-sm text-gray-600">Tasks Done</div>
+              </div>
+              <div className="wellness-card p-4 text-center">
+                <div className="text-2xl font-bold text-red-600">{totalCalories}</div>
+                <div className="text-sm text-gray-600">Calories</div>
+              </div>
+              <div className="wellness-card p-4 text-center">
+                <div className="text-2xl font-bold text-purple-600">{activeMinutes}</div>
+                <div className="text-sm text-gray-600">Active Min</div>
+              </div>
+            </div>
+          </div>
+        );
+      case 'profile':
+        return (
+          <div className="space-y-6 pt-16">
+            <ProfileSection 
+              userData={userData}
+              onUpdate={(updatedData) => {
+                // Here you would typically make an API call to update the user data
+                console.log('Updating user data:', updatedData);
+              }}
+            />
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const handleActivitySelect = (type: string) => {
+    setSelectedActivity(type);
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-50 via-white to-blue-50">
-      
-      {/* Responsive Header with Accessibility */}
+    <>
+      <div className="min-h-screen bg-gradient-to-b from-sky-50 to-white">
+        {/* Fixed Bottom Navigation */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200">
+        <div className="max-w-md mx-auto px-4 py-2">
+          <div className="flex items-center justify-around">
+            {[
+              { id: 'home', icon: Home, label: 'Home' },
+              { id: 'activity', icon: Activity, label: 'Activity' },
+              { id: 'profile', icon: User, label: 'Profile' }
+            ].map((item) => (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${
+                  activeTab === item.id
+                    ? 'text-sky-600 bg-sky-50 scale-105'
+                    : 'text-gray-600 hover:text-sky-600 hover:bg-sky-50'
+                }`}
+                aria-label={item.label}
+                aria-current={activeTab === item.id ? 'page' : undefined}
+              >
+                <item.icon className="w-6 h-6" />
+                <span className="text-xs font-medium">{item.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </nav>
+
+      {/* Fixed Top Navigation */}
+      <div className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <TopNavigation
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            userName={userData.name}
+          />
+        </div>
+      </div>
+
+      {/* Main Content Area */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-24">
+        {activeTab === 'home' && (
+          <div className="space-y-6">
+            {/* Welcome Section */}
+            <div className="bg-white rounded-2xl shadow-sm p-6">
+              <h1 className="text-2xl font-bold text-gray-900">{getGreeting()}</h1>
+              {userData.gender === 'female' && (
+                <p className="text-gray-600 mt-2">
+                  {periodData.phase.charAt(0).toUpperCase() + periodData.phase.slice(1)} phase • Day {periodData.cycleDay}
+                </p>
+              )}
+            </div>
+
+            {/* Activity Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {tasks.map((task) => (
+                <div
+                  key={task.id}
+                  className={`bg-white rounded-2xl shadow-sm p-6 transition-all ${
+                    task.completed ? 'opacity-75' : ''
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div className={`p-3 rounded-xl ${getActivityColor(task.type)}`}>
+                      {task.type === 'yoga' && <Flower2 className="w-6 h-6" />}
+                      {task.type === 'exercise' && <Dumbbell className="w-6 h-6" />}
+                      {task.type === 'meditation' && <BrainCircuit className="w-6 h-6" />}
+                    </div>
+                    <button
+                      onClick={() => toggleTaskCompletion(task.id)}
+                      className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
+                        task.completed
+                          ? 'bg-green-500 text-white'
+                          : 'bg-sky-500 text-white hover:bg-sky-600'
+                      }`}
+                    >
+                      {task.completed ? 'Completed' : 'Complete'}
+                    </button>
+                  </div>
+                  <h3 className="font-bold text-gray-900">{task.title}</h3>
+                  <p className="text-sm text-gray-600 mt-1">{task.description}</p>
+                  <div className="flex items-center gap-4 mt-4">
+                    <span className="text-sm text-gray-500">
+                      <Clock className="w-4 h-4 inline mr-1" />
+                      {task.duration}
+                    </span>
+                    {task.calories && (
+                      <span className="text-sm text-gray-500">
+                        <Zap className="w-4 h-4 inline mr-1" />
+                        {task.calories} cal
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'activity' && (
+          <div className="space-y-6">
+            {/* Activity Progress */}
+            <div className="bg-white rounded-2xl shadow-sm p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-6">Weekly Progress</h2>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={weeklyData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis dataKey="day" />
+                    <YAxis />
+                    <Tooltip />
+                    <Line 
+                      type="monotone" 
+                      dataKey="workouts" 
+                      stroke="#0ea5e9" 
+                      strokeWidth={2}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'profile' && (
+          <div className="space-y-6">
+            <ProfileSection
+              userData={userData}
+              onUpdate={(data) => {
+                if (onUpdateProfile) {
+                  onUpdateProfile(data);
+                }
+              }}
+            />
+          </div>
+        )}
+      </div>
+    </div>
       <header 
-        className={`bg-gradient-to-r ${theme.primary} text-white px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 rounded-b-2xl shadow-lg`}
+        className="bg-gradient-to-r from-sky-400 to-blue-500 text-white px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 mt-16 rounded-b-3xl shadow-sm"
         role="banner"
       >
         <div className="max-w-7xl mx-auto">
@@ -554,7 +1022,7 @@ export const ResponsiveWellnessDashboard = ({ userData, onLogout }: ResponsiveWe
               <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold truncate">
                 {getGreeting()}
               </h1>
-              <p className="text-blue-100 text-sm sm:text-base mt-1">
+              <p className="text-blue-50 text-sm sm:text-base mt-1">
                 {userData.gender === 'female' 
                   ? `${periodData.phase.charAt(0).toUpperCase() + periodData.phase.slice(1)} phase • Day ${periodData.cycleDay}`
                   : 'Ready to achieve your wellness goals?'
@@ -564,41 +1032,19 @@ export const ResponsiveWellnessDashboard = ({ userData, onLogout }: ResponsiveWe
             
             {/* Header Controls */}
             <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-              
               {/* Theme Customizer */}
-              <div className="relative">
-                <button
-                  onClick={() => setCustomizationMode(!customizationMode)}
-                  className="wellness-touch-target p-2 hover:bg-white/10 rounded-full transition-colors duration-200"
-                  aria-label="Customize theme and layout"
-                  aria-expanded={customizationMode}
-                >
-                  <Palette className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Settings */}
               <button
                 onClick={() => setCustomizationMode(!customizationMode)}
-                className="wellness-touch-target p-2 hover:bg-white/10 rounded-full transition-colors duration-200"
-                aria-label="Dashboard settings"
+                className="p-2 hover:bg-white/10 rounded-xl transition-colors duration-200"
+                aria-label="Customize theme and layout"
               >
                 <Settings className="w-5 h-5" />
-              </button>
-
-              {/* Logout */}
-              <button
-                onClick={onLogout}
-                className="wellness-touch-target p-2 hover:bg-white/10 rounded-full transition-colors duration-200"
-                aria-label="Logout"
-              >
-                <LogOut className="w-5 h-5" />
               </button>
             </div>
           </div>
 
           {/* Progress Overview */}
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 sm:p-5">
+          <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-4 sm:p-5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
               <span className="text-sm font-medium">Today's Progress</span>
               <div className="flex items-center gap-4 text-sm">
@@ -611,9 +1057,9 @@ export const ResponsiveWellnessDashboard = ({ userData, onLogout }: ResponsiveWe
                 </span>
               </div>
             </div>
-            <div className="wellness-progress bg-white/20">
+            <div className="h-2 bg-white/20 rounded-full overflow-hidden">
               <div 
-                className="wellness-progress-bar bg-white transition-all duration-700 ease-out" 
+                className="h-full bg-white transition-all duration-700 ease-out rounded-full" 
                 style={{ width: `${weeklyProgress}%` }}
                 role="progressbar"
                 aria-valuenow={weeklyProgress}
@@ -666,8 +1112,11 @@ export const ResponsiveWellnessDashboard = ({ userData, onLogout }: ResponsiveWe
       {/* Main Content - Responsive Grid */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         <div className="space-y-6 lg:space-y-8">
+          {/* Dynamic Content Based on Active Tab */}
+          {getActiveContent()}
           
-          {getVisibleWidgets().map((widget, index) => (
+          {/* Dashboard Widgets */}
+          {activeTab === 'home' && getVisibleWidgets().map((widget, index) => (
             <section 
               key={widget.id}
               className={`wellness-widget group ${customizationMode ? 'ring-2 ring-sky-200 ring-opacity-50' : ''}`}
@@ -1124,39 +1573,13 @@ export const ResponsiveWellnessDashboard = ({ userData, onLogout }: ResponsiveWe
         </div>
       </main>
 
-      {/* Responsive Bottom Navigation */}
-      <nav 
-        className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-200 px-4 py-2 sm:py-3 safe-area-pb lg:hidden"
-        role="navigation"
-        aria-label="Main navigation"
-      >
-        <div className="flex items-center justify-around max-w-md mx-auto">
-          {[
-            { id: 'home', icon: Home, label: 'Home' },
-            { id: 'activity', icon: Activity, label: 'Activity' },
-            { id: 'progress', icon: TrendingUp, label: 'Progress' },
-            { id: 'profile', icon: User, label: 'Profile' },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`wellness-touch-target flex flex-col items-center gap-1 py-2 px-3 rounded-lg transition-all duration-200 ${
-                activeTab === tab.id
-                  ? 'text-sky-600 bg-sky-50'
-                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-              }`}
-              aria-label={tab.label}
-              aria-current={activeTab === tab.id ? 'page' : undefined}
-            >
-              <tab.icon className="w-5 h-5" />
-              <span className="text-xs font-medium">{tab.label}</span>
-            </button>
-          ))}
-        </div>
-      </nav>
-
-      {/* Bottom padding for fixed navigation */}
-      <div className="h-20 sm:h-24 lg:h-0" />
-    </div>
+      {/* Top Navigation */}
+      <TopNavigation
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        userName={userData.name}
+      />
+      </div>
+    </>
   );
-};
+});
